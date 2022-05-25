@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 use image::RgbImage;
 use indicatif::ProgressBar;
 use std::sync::mpsc;
@@ -8,8 +10,8 @@ use rayon::prelude::*;
 mod utils;
 use utils::color_utils::*;
 use utils::image_utils::write_image;
-use utils::vec3_utils::*;
 use utils::random_number_utils::{random_f64, random_f64_range};
+use utils::vec3_utils::*;
 
 mod vectors;
 use vectors::vec3::Vec3;
@@ -48,9 +50,7 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
         }
         Some(rec) => match rec.mat_ptr.scatter(r, &rec) {
             None => Vec3::new(),
-            Some((scattered, attenuation)) => {
-                attenuation * ray_color(&scattered, world, depth - 1)
-            }
+            Some((scattered, attenuation)) => attenuation * ray_color(&scattered, world, depth - 1),
         },
     }
 }
@@ -70,41 +70,25 @@ fn random_scene() -> HittableList {
     for a in -11..11 {
         for b in -11..11 {
             let choose_mat = random_f64();
-            let center = Vec3::new_with_values(a as f64 + 0.9*random_f64(), 0.2, b as f64 + 0.9*random_f64());
+            let center = Vec3::new_with_values(
+                a as f64 + 0.9 * random_f64(),
+                0.2,
+                b as f64 + 0.9 * random_f64(),
+            );
 
             if (center - Vec3::new_with_values(4.0, 0.2, 0.0)).length() > 0.9 {
-                
                 if choose_mat < 0.8 {
                     let albedo = Vec3::random_vec3() * Vec3::random_vec3();
-                    let sphere_material  = Arc::new(Lambertian {
-                        albedo,
-                    });
-                    world.add(Box::new(Sphere::new(
-                        center,
-                        0.2,
-                        sphere_material.clone(),
-                    )));
+                    let sphere_material = Arc::new(Lambertian { albedo });
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material.clone())));
                 } else if choose_mat < 0.95 {
                     let albedo = Vec3::random_vec3_min_max(0.5, 1.0);
                     let fuzz = random_f64_range(0.0, 0.5);
-                    let sphere_material  = Arc::new(Metal {
-                        albedo,
-                        fuzz,
-                    });
-                    world.add(Box::new(Sphere::new(
-                        center,
-                        0.2,
-                        sphere_material.clone(),
-                    )));
+                    let sphere_material = Arc::new(Metal { albedo, fuzz });
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material.clone())));
                 } else {
-                    let sphere_material = Arc::new(Dielectric {
-                        ir: 1.5,
-                    });
-                    world.add(Box::new(Sphere::new(
-                        center,
-                        0.2,
-                        sphere_material.clone(),
-                    )));
+                    let sphere_material = Arc::new(Dielectric { ir: 1.5 });
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material.clone())));
                 }
             }
         }
@@ -117,7 +101,7 @@ fn random_scene() -> HittableList {
         material1,
     )));
 
-    let material2  = Arc::new(Lambertian {
+    let material2 = Arc::new(Lambertian {
         albedo: Vec3::new_with_values(0.4, 0.2, 0.1),
     });
     world.add(Box::new(Sphere::new(

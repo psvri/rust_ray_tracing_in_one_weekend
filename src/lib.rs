@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 pub mod hittables;
 pub mod materials;
 pub mod rays;
